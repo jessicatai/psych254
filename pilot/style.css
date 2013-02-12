@@ -102,3 +102,19 @@ This stuff will vary by experiment.
   width: 100px;
 }
 
+#trial {
+	font-size: 36px;
+	/*font-family: Courier New;*/
+	line-height: 36px;
+}
+
+.load-only {
+	display: none;
+}
+
+marquee {
+    letter-spacing: 5px;
+    font-size: 24px;
+    font-family: Courier New
+}
+

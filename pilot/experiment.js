@@ -1,8 +1,10 @@
 // ## Load dilemmas as JSON
 var myDilemmas, 
   jsonReceived = false,
-  debug = true,
-  numTrials = debug ? 4 : 40;
+  debug = false,
+  numTrials = debug ? 4 : 40,
+  myFiveCt = 0,
+  digitInterval;
 
 
 console.log('outside', jsonReceived);
@@ -23,6 +25,7 @@ console.log('outside', jsonReceived);
 function showSlide(id) {
   // Hide all slides
 	$(".slide").hide();
+  $(".load-only").hide();
 	// Show just the slide we want to show
 	$("#"+id).show();
 }
@@ -54,6 +57,8 @@ function genTrialOrder(numTrials) {
     loadHighCt = 0,
     nonLoadHighCt = 0,
     totalTrials = 0;
+  
+  digitInterval = function(){};
   var trialsPerBlock = numTrials / 2;
   while (totalTrials < numTrials) {
     var newRand = random(0, numTrials - 1);
@@ -93,10 +98,6 @@ function genTrialOrder(numTrials) {
   };
 
 }
-console.log("json function?", jsonReceived);
-    /*while (!jsonReceived){
-      console.log('waiting for json..');
-    }*/
 
 // ## Configuration settings
 var myKeyBindings = {"j": "yes", "k": "no", "f": "five"},
@@ -119,9 +120,20 @@ var experiment = {
   // Experiment-specific parameters - which datkeys map to odd/even
   keyBindings: myKeyBindings,
   dilemmas: myDilemmas,
+  trueFiveCt: myFiveCt,
+  userFiveCt: myFiveCt,
   // An array to store the data that we're collecting.
   data: [],
-  trialInstructions: function(nextTrial){ // called with no arguments randomizes next trial, else set to nextTrial's instructions
+  genDigitMarquee: function(speedPx) {
+    var randDigit = random(0, 9);
+    if (randDigit == 5){
+      experiment.trueFiveCt++;
+      $("#true-five").html(experiment.trueFiveCt);
+    }
+    document.getElementById("digit-marquee").textContent += randDigit;
+    return;
+  },
+  trialInstructions: function(nextTrial) { // called with no arguments randomizes next trial, else set to nextTrial's instructions
     var blockNumber = nextTrial ? 2 : 1;
     var rand = random() % 2;
     console.log("rand", rand);
@@ -133,8 +145,6 @@ var experiment = {
       $("#load-next-btn").click(function() {
         this.blur();
         experiment.next("load", blockNumber);
-        //experiment.nonLoadBlock();
-        console.log("set load onclick");
       })
     }
     // non-load then load
@@ -144,7 +154,6 @@ var experiment = {
       $("#nonload-next-btn").click(function() {
         this.blur();
         experiment.next("non-load", blockNumber);
-        console.log("set nonload onclick");
       })
     }
     //return experiment.end();
@@ -152,15 +161,10 @@ var experiment = {
   // Show the instructions for the load block trials
   loadBlock: function(){
     showSlide("instructions-load");
-    console.log("load block");
   },
   // Show the instructions for the NON load block trials
   nonLoadBlock: function(){
     showSlide("instructions-non-load");
-    console.log("non load block");
-  },
-  nonLoadBlockNext: function(){
-
   },
   // The function that gets called when the sequence is finished.
   end: function() {
@@ -172,6 +176,7 @@ var experiment = {
   // The work horse of the sequence - what to do on every trial.
   next: function(blockName, blockNumber){
     console.log("trial type: ", blockName);
+
     var blockTrials = blockName == "load" ? experiment.trials["loadTrials"] : experiment.trials["nonLoadTrials"];
     // Get the current trial - <code>shift()</code> removes the first element of the array and returns it.
     var n = blockTrials.shift();
@@ -190,6 +195,7 @@ var experiment = {
     // Compute the correct answer.
     var realParity = (n % 2 == 0) ? "even" : "odd";
     
+    
 
     // Display the dilemma name
     console.log("n", n);
@@ -199,7 +205,16 @@ var experiment = {
       jsonReceived = true;
       $("#dilemma-name").html(myDilemmas[n]["Name"]);
       $("#dilemma-text").html(myDilemmas[n]["Text"]);
+
       showSlide("trial");
+
+      if (blockName == "load"){
+        console.log("IN load block.. trying to show load-only");
+        $(".load-only").show();
+        // Set up digit marquee
+        var interval = blockTrials.length >= numTrials / 2 ? 333 : 111;
+        digitInterval = window.setInterval(experiment.genDigitMarquee, interval);
+      }
     });
     /*
     $("#dilemma-name").html(experiment.dilemmas[n]["Name"]);
@@ -216,18 +231,26 @@ var experiment = {
       // [keymaster]: http://github.com/madrobby/keymaster
       // [zen]: http://github.com/longouyang/zenjs
       var keyCode = event.which;
-      
-      if (keyCode != 74 && keyCode != 75 && keyCode != 70) {
+      // add to user's 5 count upon each "f" key click
+      if (keyCode == 70) {
+        experiment.userFiveCt++;
+        $("#user-five").html("user count:" + experiment.userFiveCt);
+      }
+
+      if(keyCode != 74 && keyCode != 75) {
         // If a key that we don't care about is pressed, re-attach the handler (see the end of this script for more info)
         $(document).one("keydown", keyPressHandler);
         
-      } else {
+      } 
+      else {
+        // end digit stream
+        clearInterval(digitInterval);
+
         // map keycode to character on keyboard
         var key = "";
         switch(keyCode){
           case 74: key = "j"; break;
           case 75: key = "k"; break;
-          case 70: key = "f"; break;
           default: $(document).one("keydown", keyPressHandler); break;
         }
 
